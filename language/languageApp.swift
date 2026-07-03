@@ -3,9 +3,9 @@ import SwiftData
 
 @main
 struct languageApp: App {
-    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("isDarkMode") private var isDarkMode = false        //тема в UserDefaults
         
-        var body: some Scene {
+        var body: some Scene {  //точка входа
             WindowGroup {
                 TabView {
                     TrainingView().tabItem { Label("Обучение", systemImage: "graduationcap.fill") }
@@ -14,6 +14,6 @@ struct languageApp: App {
                 }
                 .preferredColorScheme(isDarkMode ? .dark : .light)
             }
-            .modelContainer(for: WordCard.self)
+            .modelContainer(for: WordCard.self)            //SwiftData - WordCard
         }
 }

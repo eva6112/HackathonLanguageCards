@@ -1,7 +1,8 @@
+//Структуры данных
 import Foundation
 import SwiftData
 
-@Model
+@Model                          //таблица в базе данных
 class WordCard {
     var id: UUID
     var english: String
@@ -39,7 +40,7 @@ enum CardType {
     case rotationRusToEng
 }
 
-struct DictionaryWord: Codable {
+struct DictionaryWord: Codable {        //для кодирования/декодирования
     let en: String
     let ru: String
     let tr: String

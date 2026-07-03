@@ -15,7 +15,8 @@ struct DailyContentView: View {
                         Text("— \"Алиса в Стране чудес\", Глава 1").font(.caption).foregroundColor(.secondary)
                     }
                     Link(destination: URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!) {
-                        HStack { Image(systemName: "play.rectangle.fill"); Text("Видео с контентом на английском") }.font(.headline).padding().frame(maxWidth: .infinity).background(Color.red).foregroundColor(.white).cornerRadius(12)
+                        HStack { Image(systemName: "play.rectangle.fill");
+                            Text("Видео с контентом на английском") }.font(.headline).padding().frame(maxWidth: .infinity).background(Color.red).foregroundColor(.white).cornerRadius(12)
                     }
                 }
                 .padding()
@@ -26,10 +27,10 @@ struct DailyContentView: View {
 }
 
 struct SettingsView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.modelContext) private var modelContext           //контекст модели из окружения
     @Query private var cards: [WordCard]
     @AppStorage("isDarkMode") private var isDarkMode = false
-    @State private var manager = AppManager()
+    @State private var manager = AppManager()                       //чтобы состояние не сбрасывалось
     @State private var isLoading = false
 
     var body: some View {
@@ -39,16 +40,29 @@ struct SettingsView: View {
                 Section(header: Text("Управление словарем"), footer: Text("Синхронизация сохраняет ваш текущий прогресс.")) {
                     Button(action: {
                         isLoading = true
-                        Task { await manager.syncDictionary(context: modelContext); isLoading = false }
+                        Task { await manager.syncDictionary(context: modelContext);
+                            isLoading = false }
                     }) {
-                        HStack { Text("Выбор и скачивание словаря"); Spacer(); if isLoading { ProgressView() } }
+                        HStack {
+                            Text("Скачивание словаря");
+                            Spacer();
+                            if isLoading { ProgressView() }
+                        }
+                        
                     }.disabled(isLoading)
+                    
                     Button("Мануальное повторение") {
-                        for card in cards where card.isLearned && !card.isSkipped { card.isManualReview = true; card.nextReview = Date() }
+                        for card in cards where card.isLearned && !card.isSkipped {
+                            card.isManualReview = true;
+                            card.nextReview = Date()            //устанавливаем просмотр на сейчас
+                        }
                         try? modelContext.save()
                     }
+                    
                     Button("Сброс данных", role: .destructive) {
-                        for card in cards { modelContext.delete(card) }
+                        for card in cards {
+                            modelContext.delete(card)
+                        }
                         try? modelContext.save()
                     }
                 }

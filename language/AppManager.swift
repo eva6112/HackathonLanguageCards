@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 @MainActor
-@Observable
+@Observable                     //работать в главном потоке и перерисовка
 class AppManager {
     let intervals: [TimeInterval] = [300, 3600, 86400, 604800, 2592000, 7776000]
 
@@ -22,7 +22,7 @@ class AppManager {
             } else if card.penaltyStep == 2 {
                 card.penaltyStep = 0
                 card.stage += 1
-                advanceStage(for: card)
+                advanceStage(for: card)             //либо новая дата либо лернд
             } else {
                 card.stage += 1
                 advanceStage(for: card)
@@ -40,11 +40,12 @@ class AppManager {
             card.stage = 1
             card.nextReview = Date().addingTimeInterval(intervals[0])
         } else {
-            card.penaltyStep = 1
+            card.penaltyStep = 1                                //при неправильном - всегда 1
             card.nextReview = Date().addingTimeInterval(300)
         }
     }
     
+    //метод продвижения по стадиям обучения
     private func advanceStage(for card: WordCard) {
         if card.stage > 6 {
             markAsLearned(card: card)
@@ -59,31 +60,55 @@ class AppManager {
         card.learnedDate = Date()
     }
 
+    //получение следующей карточки из списка
     func getNextCard(from cards: [WordCard]) -> (card: WordCard, type: CardType)? {
         let now = Date()
-        let manualCards = cards.filter { $0.isManualReview && $0.nextReview <= now }.sorted { $0.nextReview < $1.nextReview }
-        if let first = manualCards.first { return (first, Bool.random() ? .rotationEngToRus : .rotationRusToEng) }
         
-        let dueCards = cards.filter { $0.inRotation && !$0.isLearned && $0.nextReview <= now }.sorted { $0.nextReview < $1.nextReview }
-        if let first = dueCards.first { return (first, Bool.random() ? .rotationEngToRus : .rotationRusToEng) }
+        //карточки ручного просмотра, у которых дата просмотра прошла
+        let manualCards = cards
+            .filter { $0.isManualReview && $0.nextReview <= now }
+            .sorted { $0.nextReview < $1.nextReview }
         
-        let newCards = cards.filter { !$0.inRotation && !$0.isLearned && !$0.isSkipped }
-        if let first = newCards.first { return (first, .newWord) }
+        if let first = manualCards.first {
+            return (first, Bool.random() ? .rotationEngToRus : .rotationRusToEng)
+        }
+        
+        //просроченные карточки, которые в ротации и не выучены
+        let dueCards = cards
+            .filter { $0.inRotation && !$0.isLearned && $0.nextReview <= now }
+            .sorted { $0.nextReview < $1.nextReview }
+        
+        if let first = dueCards.first {
+            return (first, Bool.random() ? .rotationEngToRus : .rotationRusToEng)
+        }
+        
+        let newCards = cards.filter {
+            !$0.inRotation &&
+            !$0.isLearned &&
+            !$0.isSkipped
+        }
+        
+        //возвращается с типом нового слова
+        if let first = newCards.first {
+            return (first, .newWord)
+        }
         
         return nil
     }
 
+    //синхронизация словаря
     func syncDictionary(context: ModelContext) async {
         guard let url = URL(string: "https://gist.githubusercontent.com/eva6112/fd369da8b96dcb351516f07e6ceeb8c9/raw/dictionary.json") else { return }
         do {
+            //создание гет-запроса - настраивать и отправлять
             var request = URLRequest(url: url)
             request.cachePolicy = .reloadIgnoringLocalCacheData
             
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let downloadedWords = try JSONDecoder().decode([DictionaryWord].self, from: data)
+            let (data, _) = try await URLSession.shared.data(for: request)                      //загружаем данные (Data, URLResponse)
+            let downloadedWords = try JSONDecoder().decode([DictionaryWord].self, from: data)   //получаем массив структур
             
-            let descriptor = FetchDescriptor<WordCard>()
-            let existingCards = (try? context.fetch(descriptor)) ?? []
+            let descriptor = FetchDescriptor<WordCard>()                        //шаблон запроса к бд
+            let existingCards = (try? context.fetch(descriptor)) ?? []          //получаем карточки
             let existingWords = Set(existingCards.map { $0.english })
             
             for item in downloadedWords {
